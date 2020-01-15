@@ -1,0 +1,1 @@
+This directory contains some references used while decoding the binary data.

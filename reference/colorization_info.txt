@@ -1,0 +1,66 @@
+Triplet specifies a triple for each source color to change
+FullyCustom is like Triplet except the source color is more precise
+CustomOffset specifies an origin colorization and an offset triple
+Normal specifies a predefined color triple, possibly multiple times
+
+Level icons replaces two colors
+Most level icons use family and status colors
+Others might be more specific
+
+Gate icons seem to be using custom offsets
+
+Sapphire Titan
+00 3A 00 00 00 02 00 42 00 00 00 02 00 43 BE 80
+00 00 BE 80 00 00 00 00 00 00 00 42 00 00 00 03
+00 43 BE AA 7E FA 00 00 00 00 BF 26 66 66
+
+Copper Falcon
+00 3A 00 00 00 02 00 42 00 00 00 02 00 43 BE 6B
+85 1F BE 80 00 00 BE CC CC CD 00 42 00 00 00 03
+00 43 3D 61 47 AE 00 00 00 00 BF 00 00 00
+
+Silver Pawn
+00 3A 00 00 00 02 00 42 00 00 00 02 00 43 BE 82
+8F 5C BE B3 33 33 BF 00 00 00 00 42 00 00 00 03
+00 43 BE CC CC CD BF 26 66 66 BE 80 00 00
+
+Amber Knight
+00 3A 00 00 00 02 00 42 00 00 00 02 00 43 3E 66
+66 66 BE 19 99 9A 00 00 00 00 00 42 00 00 00 03
+00 43 3D 4C CC CD BE 99 99 9A BF 26 66 66
+
+Coral Lion
+00 3A 00 00 00 02 00 42 00 00 00 02 00 43 BD 8F
+5C 29 BF 00 00 00 BE B3 33 33 00 42 00 00 00 03
+00 43 BD CC CC CD BF 26 66 66 00 00 00 00
+
+Compound (Gremlin + Fire)
+00 3A 00 00 00 02 00 2D 00 00 08 07 00 2D 00 00
+09 02
+
+Lichen Lair (Slime + Fire)
+00 3A 00 00 00 02 00 2D 00 00 08 04 00 2D 00 00
+09 02
+
+Clockwork Tunnels (Slime + Shock)
+00 3A 00 00 00 02 00 2D 00 00 08 04 00 2D 00 00
+09 05
+
+Treasure Vault
+00 3A 00 00 00 03 00 2D 00 00 02 1D 00 2D 00 00
+03 20 00 2D 00 00 09 04
+
+Concrete Jungle
+00 3A 00 00 00 02 00 2D 00 00 02 10 00 2D 00 00
+03 13
+
+Structure:
+0x02 Class ID (points to ColorizationConfig)
+0x02 Mystery bytes (seem to be just 00 00)
+0x02 Number of entries (this might actually be uint instead)
+Each entries has:
+0x02 Colorization type
+Type 0x2D (ColorizationConfig$Normal) requires 0x04 Colorization ID
+Type 0x42 (or 0x43) requires 0x04 Source color, 0x02 Class ID, 3*0x04 HSV data
+HSV data are 32-bit floats. Class ID usually points to ColorizationConfig$Triplet,
+while this whole class is ColorizationConfig$CustomOffsets.
