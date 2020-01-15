@@ -1,0 +1,6 @@
+*.pyc
+*.dat
+/raw_dump/*
+/output/*
+!/raw_dump/README.md
+!/output/README.md
