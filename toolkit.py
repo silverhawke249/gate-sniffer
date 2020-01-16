@@ -172,7 +172,7 @@ def convert_gate_dict(d):
     terminals = [4, 8, 13, 18, 23, 29]
     dir_defined = False
     prev_dir = None
-    lines = []
+    lines = ['##LEVELS']
     for depth, level_data in enumerate(depths):
         if depth+1 in terminals:
             dir_defined = False
@@ -201,6 +201,9 @@ def convert_gate_dict(d):
         
         str_chunk += [get_string_rep(level) for level in levels]
         lines.append(', '.join(str_chunk))
+    
+    lines.append('##THEMES')
+    lines.append(', '.join(d['themes']))
     
     return lines
 
