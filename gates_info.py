@@ -11,7 +11,7 @@ for _, _, fns in os.walk(DUMP_DIR):
     break
 
 fns.sort()
-fn = DUMP_DIR + fns[-1]
+fn = DUMP_DIR + fns[-2]
 
 with open(fn, 'rb') as f:
     raw_data = f.read()

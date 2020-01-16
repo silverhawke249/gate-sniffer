@@ -11,7 +11,7 @@ for _, _, fns in os.walk(DUMP_DIR):
     break
 
 fns.sort()
-fn = DUMP_DIR + fns[-1]
+fn = DUMP_DIR + fns[-2]
 
 with open(fn, 'rb') as f:
     raw_data = f.read()
@@ -34,5 +34,6 @@ for gate in gates:
     name = data['gate_name']
     fn = SAVE_DIR + '{}_{}.txt'.format(id, name)
     with open(fn, 'w') as f:
+        f.write('##GATEDATA\n')
         f.write('\n'.join(toolkit.convert_gate_dict(data)))
     print 'Saved to {}.'.format(fn)
