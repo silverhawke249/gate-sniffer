@@ -1,6 +1,6 @@
 import toolkit
 import time
-from scapy.all import IP, Raw
+from scapy.all import IP, Raw, IPSession
 
 # This script fetches gate data by sniffing traffic and dumping it into a file
 
@@ -14,7 +14,7 @@ DUMP_DIR = 'raw_dump/'
 print 'Monitoring packets...'
 state = 0
 src_ip = None
-queue, sniffer = toolkit.get_queue(filter=PACKET_FILTER)
+queue, sniffer = toolkit.get_queue(session=IPSession, filter=PACKET_FILTER)
 for pkt in toolkit.queue_yielder(queue):
     if src_ip is not None:
         if IP in pkt:
