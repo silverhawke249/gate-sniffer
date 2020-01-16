@@ -31,7 +31,7 @@ for pkt in toolkit.queue_yielder(queue):
             raw_dump = raw_data
         elif state == 1:
             raw_dump += raw_data
-            if raw_dump.count(STR_DATA_CHECK) >= 5:
+            if raw_dump.count(STR_DATA_CHECK) >= 6:
                 state = 2
         elif state == 2:
             break
