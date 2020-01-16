@@ -12,6 +12,7 @@ for _, _, fns in os.walk(DUMP_DIR):
 
 fns.sort()
 fn = DUMP_DIR + fns[-2]
+print 'Opening {}...'.format(fn)
 
 with open(fn, 'rb') as f:
     raw_data = f.read()

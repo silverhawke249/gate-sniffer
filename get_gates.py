@@ -10,6 +10,7 @@ for _, _, fns in os.walk(DUMP_DIR):
 
 fns.sort()
 fn = DUMP_DIR + fns[-2]
+print 'Opening {}...'.format(fn)
 
 with open(fn, 'rb') as f:
     raw_data = f.read()
@@ -29,3 +30,4 @@ gates = [raw_data[i:j] for i, j in index_pairs]
 for i, gate in enumerate(gates):
     with open('gate{}.dat'.format(i), 'wb') as f:
         f.write(gate)
+    print 'Saved to gate{}.dat.'.format(i)
