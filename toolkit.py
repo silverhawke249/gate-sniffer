@@ -1,7 +1,20 @@
-from Queue import Queue
+from queue import Queue
 from struct import unpack
+from io import BytesIO
+from itertools import zip_longest
 from scapy.all import *
-from StringIO import StringIO
+
+
+def get_index_pairs(text, substring):
+    indexes = []
+    pos = 0
+    while pos >= 0:
+        pos = text.find(substring, pos)
+        if pos >= 0:
+            indexes.append(pos - 8)
+            pos += len(substring)
+
+    return zip_longest(indexes, indexes[1:])
 
 
 def get_queue(*args, **kwargs):
@@ -36,7 +49,7 @@ def clamp(val, min, max):
 def parse_binary_gate_data(d):
     # Any seek operation that isn't 1 byte discards unknown data!
     # Refer to gatemap.bt for how the struct is arranged
-    s = StringIO(d)
+    s = BytesIO(d)
     s.seek(1, 1)
     gate_id = unpack('>I', s.read(4))[0]
     s.seek(1, 1)
@@ -55,7 +68,7 @@ def parse_binary_gate_data(d):
     s.seek(0x16, 1)
     wheel_num = unpack('>I', s.read(4))[0]
     
-    gate_name_pieces = internal_gate_name.split('|')
+    gate_name_pieces = internal_gate_name.decode().split('|')
     gate_name_pieces = [x.split('.')[1] for x in gate_name_pieces]
     gate_name = '_'.join(gate_name_pieces)
     for color in color_data:
@@ -73,16 +86,16 @@ def parse_binary_gate_data(d):
             'contents': None}
     
     contents = []
-    for _ in xrange(wheel_num):
+    for _ in range(wheel_num):
         levels = ['?']
         rand_bit = unpack('>H', s.read(2))[0]
         s.seek(0x05, 1)
         num_levels = unpack('>H', s.read(2))[0]
         
-        for _ in xrange(num_levels):
+        for _ in range(num_levels):
             s.seek(0x03, 1)
             lv_name_len = unpack('>H', s.read(2))[0]
-            lv_name = s.read(lv_name_len)
+            lv_name = s.read(lv_name_len).decode()
             s.seek(1, 1)
             lv_icon_len = unpack('>H', s.read(2))[0]
             s.seek(lv_icon_len, 1)
@@ -150,7 +163,7 @@ def read_colorization(s):
     s.seek(0x02, 1)
     num_entries = unpack('>H', s.read(2))[0]
     data = []
-    for _ in xrange(num_entries):
+    for _ in range(num_entries):
         type = unpack('>H', s.read(2))[0]
         if type == 0x42 + offset:
             source = unpack('>I', s.read(4))[0]

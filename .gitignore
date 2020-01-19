@@ -1,5 +1,6 @@
 *.pyc
 *.dat
+/__pycache__/
 /raw_dump/*
 /output/*
 !/raw_dump/README.md
