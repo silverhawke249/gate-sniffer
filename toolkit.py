@@ -272,7 +272,7 @@ def get_string_rep(s):
         else:
             lv_parts.append('starlight')
             n = s[-1]
-            n = '' if n == 'r' else n
+            n = '' if n == 'r' or n == 'e' else n
             if 'shrine_of_slumber' in s:
                 lv_parts.append('ss' + n)
             elif 'meteor_mile' in s:
