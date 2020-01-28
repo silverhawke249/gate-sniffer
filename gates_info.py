@@ -17,9 +17,18 @@ print('Opening {}...'.format(fn))
 with open(fn, 'rb') as f:
     raw_data = f.read()
 
-index_pairs = toolkit.get_index_pairs(raw_data, b'%town:m.rotating_gate_name')
-gates = [raw_data[i:j] for i, j in index_pairs]
+gates = toolkit.parse_data(raw_data)
 
 for gate in gates:
-    data = toolkit.parse_binary_gate_data(gate)
-    print('ID {gate_id}  Name {gate_name}  FG {fg_color}  BG {bg_color}\nThemes  {themes}'.format(**data))
+    data = {
+        'gate_id': gate.gate_id,
+        'gate_name': gate.gate_name[27:],
+        'fg_color': None,
+        'bg_color': None
+    }
+    for c in gate.colorization.colorizations:
+        if c.colors.source == 2:
+            data['fg_color'] = [round(a, 3) for a in c.colors.hsv]
+        elif c.colors.source == 3:
+            data['bg_color'] = [round(a, 3) for a in c.colors.hsv]
+    print('ID {gate_id}  Name {gate_name}  FG {fg_color}  BG {bg_color}'.format(**data))

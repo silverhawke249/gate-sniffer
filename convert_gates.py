@@ -17,15 +17,16 @@ print('Opening {}...'.format(fn))
 with open(fn, 'rb') as f:
     raw_data = f.read()
 
-index_pairs = toolkit.get_index_pairs(raw_data, b'%town:m.rotating_gate_name')
-gates = [raw_data[i:j] for i, j in index_pairs]
+gates = toolkit.parse_data(raw_data)
 
 for gate in gates:
-    data = toolkit.parse_binary_gate_data(gate)
-    id = data['gate_id']
-    name = data['gate_name']
+    id = gate.gate_id
+    names = gate.gate_name
+    names = names.split('|')[1:]
+    names = [a[2:] for a in names]
+    name = '_'.join(names)
     fn = SAVE_DIR + f'{id}_{name}.txt'
     with open(fn, 'w') as f:
         f.write('##GATEDATA\n')
-        f.write('\n'.join(toolkit.convert_gate_dict(data)))
+        f.write('\n'.join(toolkit.convert_gate_struct(gate)))
     print(f'Saved to {fn}.')

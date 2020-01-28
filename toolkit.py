@@ -1,8 +1,11 @@
-from queue import Queue
-from struct import unpack
+import construct as cs
+
 from io import BytesIO
 from itertools import zip_longest
+from json import dumps
+from queue import Queue
 from scapy.all import *
+from struct import unpack
 
 
 def get_index_pairs(text, substring):
@@ -37,103 +40,167 @@ def queue_yielder(q):
         yield q.get(block=True)
 
 
-def clamp(val, min, max):
-    if val <= min:
-        return min
-    elif val >= max:
-        return max
-    else:
-        return val
+def gate_factory(class_dict):
+    normal_color_struct = cs.Struct(
+        cs.Padding(2),
+        'category' / cs.Byte,
+        'color' / cs.Byte
+    )
+    offset_color_struct = cs.Struct(
+        'source' / cs.Int,
+        cs.Const(class_dict['color_triplet']),
+        'hsv' / cs.Single[3]
+    )
+    color_entry_struct = cs.Struct(
+        'type' / cs.RawCopy(cs.Short),
+        'colors' / cs.Switch(cs.this.type.data, {
+            class_dict['normal_color']: normal_color_struct,
+            class_dict['offset_color']: offset_color_struct
+        })
+    )
+    color_struct = cs.Struct(
+        cs.Const(class_dict['colorization']),
+        'num_entries' / cs.Int,
+        'colorizations' / color_entry_struct[cs.this.num_entries]
+    )
+    level_struct = cs.Struct(
+        cs.Const(class_dict['gate_level']),
+        cs.Const(b'\x01'),
+        'level_name' / cs.PascalString(cs.Short, 'ascii'),
+        cs.Const(b'\x01'),
+        'level_icon' / cs.PascalString(cs.Short, 'ascii'),
+        'colorization' / color_struct,
+        cs.Const(b'\x01'),
+        'description' / cs.PascalString(cs.Short, 'ascii'),
+        cs.Const(class_dict['level_type']),
+        'level_type' / cs.Byte,
+        'restricted' / cs.Byte
+    )
+    velocity_struct = cs.Struct(
+        'velocity' / cs.Single,
+        cs.Const(b'\x01'),
+        'num_entries' / cs.Int,
+        'lengths' / cs.Single[cs.this.num_entries],
+        'start' / cs.Long
+    )
+    wheel_struct = cs.Struct(
+        'class_id' / cs.RawCopy(cs.Short),
+        'unknown' / cs.Byte[0x05],
+        'num_levels' / cs.Short,
+        'levels' / level_struct[cs.this.num_levels],
+        'velocity' / cs.If(cs.this.class_id.data != class_dict['random_depth'], velocity_struct)
+    )
+    gate_struct = cs.Struct(
+        cs.Const(b'\x01'),
+        'gate_id' / cs.Int,
+        cs.Const(b'\x01'),
+        'gate_name' / cs.PascalString(cs.Short, 'ascii'),
+        cs.Const(b'\x01'),
+        'gate_icon' / cs.PascalString(cs.Short, 'ascii'),
+        'colorization' / color_struct,
+        cs.Const(b'\x01'),
+        'description' / cs.PascalString(cs.Short, 'ascii'),
+        'unknown' / cs.Byte[0x16],
+        'num_wheels' / cs.Int,
+        'wheels' / wheel_struct[cs.this.num_wheels],
+        'class_id' / cs.Int16sb,
+        cs.If(cs.this.class_id < 0, cs.PascalString(cs.Short, 'ascii')),
+        'themes' / cs.Struct(
+            'unknown' / cs.Byte[0x07],
+            'themes' / cs.Byte[0x06]
+        )
+    )
+
+    return gate_struct
 
 
-def parse_binary_gate_data(d):
-    # Any seek operation that isn't 1 byte discards unknown data!
-    # Refer to gatemap.bt for how the struct is arranged
-    s = BytesIO(d)
-    s.seek(1, 1)
-    gate_id = unpack('>I', s.read(4))[0]
-    s.seek(1, 1)
-    name_len = unpack('>H', s.read(2))[0]
-    
-    # Discarding the prefix since we're only interested in the actual name
-    s.seek(0x1B, 1)
-    internal_gate_name = s.read(name_len - 0x1B)
-    s.seek(1, 1)
-    icon_name_len = unpack('>H', s.read(2))[0]
-    s.seek(icon_name_len, 1)
-    color_data = read_colorization(s)
-    s.seek(1, 1)
-    gate_desc_len = unpack('>H', s.read(2))[0]
-    s.seek(gate_desc_len, 1)
-    s.seek(0x16, 1)
-    wheel_num = unpack('>I', s.read(4))[0]
-    
-    gate_name_pieces = internal_gate_name.decode().split('|')
-    gate_name_pieces = [x.split('.')[1] for x in gate_name_pieces]
-    gate_name = '_'.join(gate_name_pieces)
-    for color in color_data:
-        hsv = tuple(round(c, 3) for c in color[3])
-        if color[1] == 2:
-            fg_color = hsv
-        elif color[1] == 3:
-            bg_color = hsv
-        else:
-            raise ValueError('unrecognized color source: {}'.format(color[1]))
-    data = {'gate_id': gate_id,
-            'gate_name': gate_name,
-            'fg_color': fg_color,
-            'bg_color': bg_color,
-            'contents': None}
-    
-    contents = []
-    for _ in range(wheel_num):
-        levels = ['?']
-        rand_bit = unpack('>H', s.read(2))[0]
-        s.seek(0x05, 1)
-        num_levels = unpack('>H', s.read(2))[0]
-        
-        for _ in range(num_levels):
-            s.seek(0x03, 1)
-            lv_name_len = unpack('>H', s.read(2))[0]
-            lv_name = s.read(lv_name_len).decode()
-            s.seek(1, 1)
-            lv_icon_len = unpack('>H', s.read(2))[0]
-            s.seek(lv_icon_len, 1)
-            color_data = read_colorization(s)
-            s.seek(1, 1)
-            desc_len = unpack('>H', s.read(2))[0]
-            s.seek(desc_len, 1)
-            s.seek(0x04, 1)
+def parse_data(data):
+    # Class names to get the class numbers
+    class_names = {
+        'colorization': b'[Lcom.threerings.opengl.renderer.config.ColorizationConfig;',
+        'normal_color': b'com.threerings.opengl.renderer.config.ColorizationConfig$Normal',
+        'offset_color': b'com.threerings.opengl.renderer.config.ColorizationConfig$CustomOffsets',
+        'color_triplet': b'com.threerings.opengl.renderer.config.ColorizationConfig$Triplet',
+        'gate_summary': b'com.threerings.projectx.dungeon.data.RotatingGateSummary',
+        'constant_depth': b'com.threerings.projectx.dungeon.data.GateSummary$Constant',
+        'random_depth': b'com.threerings.projectx.dungeon.data.GateSummary$Random',
+        'gate_level': b'com.threerings.projectx.dungeon.data.GateSummary$Level',
+        'level_type': b'com.threerings.projectx.dungeon.data.DungeonCodes$LevelType'
+    }
+
+    class_ids = {}
+    for key, val in class_names.items():
+        index = data.index(val) - 4
+        class_id = -cs.Int16sb.parse(data[index:index+2])
+        class_ids[key] = cs.Short.build(class_id)
+    struct = gate_factory(class_ids)
+
+    gate_index = []
+    subs = b'%town:m.rotating_gate_name'
+    pos = 0
+    while True:
+        try:
+            pos = data.index(subs, pos)
+        except ValueError:
+            break
+        gate_index.append(pos - 8)
+        pos += len(subs)
+
+    index_pairs = itertools.zip_longest(gate_index, gate_index[1:])
+    raw_gates = [data[i:j] for i, j in index_pairs]
+
+    return [struct.parse(d) for d in raw_gates]
+
+
+def convert_gate_struct(d):
+    terminals = [0, 4, 8, 13, 18, 23, 29]
+    dir_defined = False
+    prev_dir = None
+    lines = ['##LEVELS']
+    for i, wheel in enumerate(d.wheels):
+        if i in terminals:
+            dir_defined = False
+            prev_dir = None
+            continue
             
-            # Special treatment for compounds, since main family is only
-            # discernible via colorization
+        str_chunk = []
+        if wheel.velocity is not None:
+            dir = 'l' if wheel.velocity.velocity < 0 else 'r'
+        else:
+            dir = 'rand'
+        level_data = [a.level_name for a in wheel.levels]
+        
+        if dir == 'rand':
+            levels = level_data[:-2]
+            tv_level = level_data[-2]
+            if 'tvault' in tv_level:
+                status = tv_level.split('_')[-1]
+                status = 'x' if status == 'vanilla' else status
+                dir += '_' + status
+            dir_defined = False
+        else:
+            levels = level_data[:]
+            dir_defined = True
+        
+        if not dir_defined or prev_dir not in ['l', 'r']:
+            str_chunk.append(dir)
+        
+        prev_dir = dir
+        
+        for i, lv_name in enumerate(levels):
             if 'minis' in lv_name:
-                family = color_data[0][1][1]
+                family = wheel.levels[i].colorization.colorizations[0].colors.color
                 main_family = ('construct' if family == 5 else
                                'fiend' if family == 6 else
                                'gremlin')
                 suffix = '_' + main_family
             else:
                 suffix = ''
-            levels.append(lv_name + suffix)
-            
-        # This is 0x44 or 0x45, depends on whether an extra class
-        # gets declared or not
-        if 0x44 <= rand_bit <= 0x45:
-            levels[0] = 'rand'
-        else:
-            dir_byte = unpack('B', s.read(1))[0]
-            levels[0] = 'l' if dir_byte & 0x80 else 'r'
-            s.seek(0x10 + num_levels*4, 1)
-            
-        contents.append(levels)
+            levels[i] = lv_name + suffix
+        
+        str_chunk += [get_string_rep(level) for level in levels]
+        lines.append(', '.join(str_chunk))
     
-    class_id = unpack('>h', s.read(2))[0]
-    if class_id < 0:
-        class_name_len = unpack('>H', s.read(2))[0]
-        s.seek(class_name_len, 1)
-    s.seek(0x07, 1)
-    themes = unpack('>BBBBBB', s.read(6))
     stratum_themes = ['Slime',
                       'Beast',
                       'Undead',
@@ -148,77 +215,29 @@ def parse_binary_gate_data(d):
                       'Curse',
                       'Stun',
                       'None']
-    
-    data['contents'] = contents[1:]
-    data['themes'] = tuple(stratum_themes[x] for x in themes)
-    return data
-
-
-def read_colorization(s):
-    # Might be worth it to really unravel this structure?
-    # Class ID can be a different number, but so far it's
-    # either 0x3A or 0x3B -- classes are IDed as they get declared
-    class_id = unpack('>H', s.read(2))[0]
-    offset = class_id - 0x3A
-    s.seek(0x02, 1)
-    num_entries = unpack('>H', s.read(2))[0]
-    data = []
-    for _ in range(num_entries):
-        type = unpack('>H', s.read(2))[0]
-        if type == 0x42 + offset:
-            source = unpack('>I', s.read(4))[0]
-            # Usually this is 0x43 -- haven't encountered others yet
-            specifier = unpack('>H', s.read(2))[0]
-            hsv_offset = unpack('>fff', s.read(12))
-            data.append((type, source, specifier, hsv_offset))
-        elif type == 0x2D:
-            # Seems to just be zero bytes
-            s.seek(0x02, 1)
-            colors = unpack('>BB', s.read(2))
-            data.append((type, colors))
-    return data
-
-
-def convert_gate_dict(d):
-    depths = d['contents']
-    
-    terminals = [4, 8, 13, 18, 23, 29]
-    dir_defined = False
-    prev_dir = None
-    lines = ['##LEVELS']
-    for depth, level_data in enumerate(depths):
-        if depth+1 in terminals:
-            dir_defined = False
-            prev_dir = None
-            continue
-            
-        str_chunk = []
-        dir = level_data[0]
-        
-        if dir == 'rand':
-            levels = level_data[1:-2]
-            tv_level = level_data[-2]
-            if 'tvault' in tv_level:
-                status = tv_level.split('_')[-1]
-                status = 'x' if status == 'vanilla' else status
-                dir += '_' + status
-            dir_defined = False
-        else:
-            levels = level_data[1:]
-            dir_defined = True
-        
-        if not dir_defined or prev_dir not in ['l', 'r']:
-            str_chunk.append(dir)
-        
-        prev_dir = dir
-        
-        str_chunk += [get_string_rep(level) for level in levels]
-        lines.append(', '.join(str_chunk))
-    
     lines.append('##THEMES')
-    lines.append(', '.join(d['themes']))
+    lines.append(', '.join([stratum_themes[a] for a in d.themes.themes]))
+    
+    lines.append('##ROTATIONS')
+    velocities = [convert_container(a.velocity) for a in d.wheels]
+    lines.append(dumps(velocities))
     
     return lines
+
+
+def convert_container(c):
+    if isinstance(c, cs.ListContainer):
+        return [convert_container(a) for a in c]
+    elif isinstance(c, cs.Container):
+        if 'offset1' in c and 'offset2' in c:
+            return c.value
+        out = {}
+        for k, v in c.items():
+            if k == '_io':
+                continue
+            out[k] = convert_container(v)
+        return out
+    return c
 
 
 def get_string_rep(s):
