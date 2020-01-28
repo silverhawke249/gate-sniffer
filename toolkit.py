@@ -220,6 +220,7 @@ def convert_gate_struct(d):
     
     lines.append('##ROTATIONS')
     velocities = [convert_container(a.velocity) for a in d.wheels]
+    velocities = [{'n': d.wheels[i].num_levels, 'data': a} for i, a in enumerate(velocities)]
     lines.append(dumps(velocities))
     
     return lines
