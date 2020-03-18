@@ -112,6 +112,7 @@ def gate_factory(class_dict):
     )
 
     return gate_struct
+    # return cs.Debugger(gate_struct)
 
 
 def parse_data(data):
@@ -130,9 +131,12 @@ def parse_data(data):
 
     class_ids = {}
     for key, val in class_names.items():
-        index = data.index(val) - 4
-        class_id = -cs.Int16sb.parse(data[index:index+2])
-        class_ids[key] = cs.Short.build(class_id)
+        if val in data:
+            index = data.index(val) - 4
+            class_id = -cs.Int16sb.parse(data[index:index+2])
+            class_ids[key] = cs.Short.build(class_id)
+        else:
+            class_ids[key] = 0
     struct = gate_factory(class_ids)
 
     gate_index = []
