@@ -5,8 +5,9 @@ from scapy.all import IP, Raw, IPSession
 # This script fetches gate data by sniffing traffic and dumping it into a file
 
 STR_INIT_COMM = b'com.threerings.presents.net.SecureResponse'
-STR_BEGIN_GATE_DATA = b'com.threerings.projectx.dungeon.data.RotatingGateSummary'
+STR_ROTATING_GATE = b'%town:m.rotating_gate_name'
 STR_DATA_CHECK = b'm.terminal_core_desc'
+STR_STEAM_VC = b'steamVoiceChatEnabled'  # this only works with Steam launcher
 PACKET_FILTER = 'dst net 192.168.1 and tcp and ip'
 DUMP_DIR = 'raw_dump/'
 
@@ -31,14 +32,16 @@ for pkt in toolkit.queue_yielder(queue):
             raw_dump = raw_data
         elif state == 1:
             raw_dump += raw_data
-            if raw_dump.count(STR_DATA_CHECK) >= 6:
+            if raw_dump.count(STR_ROTATING_GATE) >= 4 and raw_dump.count(STR_DATA_CHECK) == 2 + raw_dump.count(STR_ROTATING_GATE):
+            # if STR_STEAM_VC in raw_dump:
                 state = 2
         elif state == 2:
+            raw_dump += raw_data
             break
 
 sniffer.stop()
 
-fn = DUMP_DIR + time.strftime('%Y%m%d%H%m%S', time.localtime())
+fn = DUMP_DIR + time.strftime('%Y%m%d%H%M%S', time.localtime())
 with open(fn, 'wb') as f:
     f.write(raw_dump)
 
