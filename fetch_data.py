@@ -37,7 +37,10 @@ for pkt in toolkit.queue_yielder(queue):
                 state = 2
         elif state == 2:
             raw_dump += raw_data
-            break
+            if raw_dump.count(STR_DATA_CHECK) != 2 + raw_dump.count(STR_ROTATING_GATE):
+                state = 1
+            else:
+                break
 
 sniffer.stop()
 
