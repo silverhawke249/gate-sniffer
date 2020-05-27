@@ -27,6 +27,6 @@ for gate in gates:
     name = '_'.join(names)
     fn = SAVE_DIR + f'{id}_{name}.txt'
     with open(fn, 'w') as f:
-        f.write('##GATEDATA\n')
-        f.write('\n'.join(toolkit.convert_gate_struct(gate)))
+        f.write('##JSON\n')
+        f.write(toolkit.convert_gate_struct(gate))
     print(f'Saved to {fn}.')

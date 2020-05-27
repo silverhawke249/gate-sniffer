@@ -160,7 +160,7 @@ def convert_gate_struct(d):
     terminals = [0, 4, 8, 13, 18, 23, 29]
     dir_defined = False
     prev_dir = None
-    lines = ['##LEVELS']
+    output = {'levels': []}
     for i, wheel in enumerate(d.wheels):
         if i in terminals:
             dir_defined = False
@@ -203,7 +203,7 @@ def convert_gate_struct(d):
             levels[i] = lv_name + suffix
         
         str_chunk += [get_string_rep(level) for level in levels]
-        lines.append(', '.join(str_chunk))
+        output['levels'].append(', '.join(str_chunk))
     
     stratum_themes = ['Slime',
                       'Beast',
@@ -219,15 +219,13 @@ def convert_gate_struct(d):
                       'Curse',
                       'Stun',
                       'None']
-    lines.append('##THEMES')
-    lines.append(', '.join([stratum_themes[a] for a in d.themes.themes]))
+    output['themes'] = [stratum_themes[a] for a in d.themes.themes]
     
-    lines.append('##ROTATIONS')
     velocities = [convert_container(a.velocity) for a in d.wheels]
     velocities = [{'n': d.wheels[i].num_levels, 'data': a} for i, a in enumerate(velocities)]
-    lines.append(dumps(velocities))
+    output['rotations'] = velocities
     
-    return lines
+    return dumps(output)
 
 
 def convert_container(c):
