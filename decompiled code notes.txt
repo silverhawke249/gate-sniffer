@@ -1,0 +1,49 @@
+// code lifted from projectx.dungeon.client.a.t
+else {
+	float n2 = (this.azj < this.aza.EZ().length) ? this.aza.EZ()[this.azj].e(this.ajq.wedgeIndices[this.azj], xo) : 0.0f
+	i = wheel.a(n2, xo);
+	final GateSummary.Wedge wedge = this.aBO.EZ()[this.aBP].Ff()[i];
+	final StringBuilder append = new StringBuilder().append("ui/icon/map/");
+	final GateSummary.Wedge wedge2 = wedge;
+	this.afY.xn();
+	s = append.append(wedge2.Fb()).append(".png").toString();
+	final GateSummary.Wedge wedge3 = wedge;
+	this.afY.xn();
+	array = wedge3.Fc();
+}
+------
+this.azj = current depth?
+this.aza = gate summary. method EZ() returns array of wheels...
+so (this.azj < this.aza.EZ().length) should return true always?
+
+okay, let's open this one by one...
+this.aza.EZ()[this.azj].e(this.ajq.wedgeIndices[this.azj], xo)
+
+this.ajq is a level party object. wedgeIndices is the levels we visited
+so this.ajq.wedgeIndices[this.azj] is the current depth's level (index)
+
+this.aza.EZ()[this.azj] returns the current depth's wheel
+and method e() is basically clampCenteredTwoPi(this.getDistanceTraveled(xo) + this.getOffset(current-level));
+so what i had is already right??
+i just need to figure out what's xo?
+
+also wheel = this.aBO.EZ()[this.aBP]
+therefore you need to run the .a() method of the next depth.
+
+xo is obtained from final long xo = this.afY.xo();
+this.afY is instance of projectx.util.A, which has a .xo() method
+i imagine xo just returns the current unix timestamp, in miliseconds
+
+now the next part.
+final GateSummary.Wedge wedge = this.aBO.EZ()[this.aBP].Ff()[i];
+
+this.aBO is also a gate summary, but
+
+this.aza = (GateSummary)this.afY.xn().gates.f((Comparable)this.ajq.gateId);
+this.aBO = (GateSummary)this.afY.xn().gates.f((Comparable)this.ajq.actualGateId);
+
+they should be pointing at the same gate.
+
+this.aBP = this.ajq.actualFloor + 1;
+so aBP is one more than azj, aka pointing at the next floor.
+and just use 'i' to pick the next level's wedge...?
